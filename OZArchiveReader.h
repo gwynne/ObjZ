@@ -32,6 +32,10 @@ typedef enum
 @property(nonatomic,assign,readonly)	uint16_t				internalAttributes;
 @property(nonatomic,assign,readonly)	uint32_t				externalAttributes;
 
+// possible only until the next enumerate or find operation on the archive
+// pass nil for no password (the empty string is NOT the same!)
+- (NSData *)fetchContentsWithPassword:(NSString *)password;
+
 @end
 
 @interface OZArchiveReader : NSObject

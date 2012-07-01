@@ -49,6 +49,9 @@
 @end
 
 @implementation OZArchivedFile
+{
+	unzFile _unzipper;
+}
 
 @synthesize archive = _archive, compressorVersion = _compressorVersion, minDecompressorVersion = _minDecompressorVersion, flags = _flags,
 			diskNumberStart = _diskNumberStart, internalAttributes = _internalAttributes, method = _method,
@@ -60,17 +63,18 @@
 	if ((self = [super init]))
 	{
 		_archive = archive;
+		_unzipper = unzipper;
 		
 		unz_file_info64		info;
 		
-		if (unzGetCurrentFileInfo64(unzipper, &info, NULL, 0, NULL, 0, NULL, 0) != UNZ_OK)
+		if (unzGetCurrentFileInfo64(_unzipper, &info, NULL, 0, NULL, 0, NULL, 0) != UNZ_OK)
 			return nil;
 		
 		NSMutableData		*fileName = [NSMutableData dataWithLength:info.size_filename + 1],
 							*extraField = [NSMutableData dataWithLength:info.size_file_extra + 1],
 							*comment = [NSMutableData dataWithLength:info.size_file_comment + 1];
 		
-		if (unzGetCurrentFileInfo64(unzipper, &info, fileName.mutableBytes, info.size_filename, extraField.mutableBytes,
+		if (unzGetCurrentFileInfo64(_unzipper, &info, fileName.mutableBytes, info.size_filename, extraField.mutableBytes,
 									info.size_file_extra, comment.mutableBytes, info.size_file_comment) == UNZ_OK)
 		{
 			_path = [[NSString alloc] initWithData:fileName encoding:NSUTF8StringEncoding];
@@ -94,6 +98,20 @@
 		_expandedSize = info.uncompressed_size;
 	}
 	return self;
+}
+
+- (NSData *)fetchContentsWithPassword:(NSString *)password
+{
+	if (unzOpenCurrentFilePassword(_unzipper, password ? password.UTF8String : NULL) != UNZ_OK)
+		return nil;
+
+	NSMutableData			*data = [NSMutableData dataWithLength:self.expandedSize];
+	
+	if (unzReadCurrentFile(_unzipper, data.mutableBytes, data.length) != data.length)
+		data = nil;
+	unzCloseCurrentFile(_unzipper);
+	
+	return data;
 }
 
 @end
