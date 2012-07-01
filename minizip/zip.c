@@ -1035,10 +1035,12 @@ int Write_LocalFileHeader(zip64_internal* zi, const char* filename, uInt size_ex
       zi->ci.pos_zip64extrainfo = ZTELL64(zi->z_filefunc,zi->filestream);
 
       err = zip64local_putValue(&zi->z_filefunc, zi->filestream, (short)HeaderID,2);
-      err = zip64local_putValue(&zi->z_filefunc, zi->filestream, (short)DataSize,2);
-
-      err = zip64local_putValue(&zi->z_filefunc, zi->filestream, (ZPOS64_T)UncompressedSize,8);
-      err = zip64local_putValue(&zi->z_filefunc, zi->filestream, (ZPOS64_T)CompressedSize,8);
+	  if (err == ZIP_OK)
+		  err = zip64local_putValue(&zi->z_filefunc, zi->filestream, (short)DataSize,2);
+	  if (err == ZIP_OK)
+		  err = zip64local_putValue(&zi->z_filefunc, zi->filestream, (ZPOS64_T)UncompressedSize,8);
+	  if (err == ZIP_OK)
+          err = zip64local_putValue(&zi->z_filefunc, zi->filestream, (ZPOS64_T)CompressedSize,8);
   }
 
   return err;
@@ -1114,9 +1116,9 @@ extern int ZEXPORT zipOpenNewFileInZip4_64 (zipFile file, const char* filename, 
     zi->ci.flag = flagBase;
     if ((level==8) || (level==9))
       zi->ci.flag |= 2;
-    if ((level==2))
+    if (level==2)
       zi->ci.flag |= 4;
-    if ((level==1))
+    if (level==1)
       zi->ci.flag |= 6;
     if (password != NULL)
       zi->ci.flag |= 1;
@@ -1538,9 +1540,12 @@ extern int ZEXPORT zipCloseFileInZipRaw64 (zipFile file, ZPOS64_T uncompressed_s
                                         zi->ci.stream.avail_out = (uInt)Z_BUFSIZE;
                                         zi->ci.stream.next_out = zi->ci.buffered_data;
                                 }
-                                uTotalOutBefore = zi->ci.stream.total_out;
-                                err=deflate(&zi->ci.stream,  Z_FINISH);
-                                zi->ci.pos_in_buffered_data += (uInt)(zi->ci.stream.total_out - uTotalOutBefore) ;
+								if (err == ZIP_OK)
+								{
+									uTotalOutBefore = zi->ci.stream.total_out;
+									err=deflate(&zi->ci.stream,  Z_FINISH);
+									zi->ci.pos_in_buffered_data += (uInt)(zi->ci.stream.total_out - uTotalOutBefore) ;
+								}
                         }
                 }
     else if ((zi->ci.method == Z_BZIP2ED) && (!zi->ci.raw))
@@ -1679,7 +1684,7 @@ extern int ZEXPORT zipCloseFileInZipRaw64 (zipFile file, ZPOS64_T uncompressed_s
       if(zi->ci.pos_local_header >= 0xffffffff)
       {
         zip64local_putValue_inmemory(p, zi->ci.pos_local_header, 8);
-        p += 8;
+        //p += 8;
       }
 
       // Update how much extra free space we got in the memory buffer

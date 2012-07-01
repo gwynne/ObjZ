@@ -10,13 +10,15 @@
 
 typedef enum
 {
+	OZCompressionUnknown = -1,
 	OZCompressionDeflate = 0,
 	OZCompressionBzip2 = 1,
 } OZCompressionMethod;
 
-@interface OZArchiveFile : NSObject
+@class OZArchiveReader;
+@interface OZArchivedFile : NSObject
 
-@property(nonatomic,weak,readonly)		OZArchive				*archive;
+@property(nonatomic,weak,readonly)		OZArchiveReader			*archive;
 @property(nonatomic,assign,readonly)	uint16_t				compressorVersion, minDecompressorVersion;
 @property(nonatomic,assign,readonly)	uint16_t				flags;
 @property(nonatomic,assign,readonly)	OZCompressionMethod		method;
@@ -39,13 +41,13 @@ typedef enum
 + (OZArchiveReader *)readerWithData:(NSData *)data;
 
 - (id)initWithURL:(NSURL *)url;
-- (id)initWithPath:(NSURL *)url;
+- (id)initWithPath:(NSString *)path;
 - (id)initWithData:(NSData *)data;
 
 @property(nonatomic,assign,readonly)	uint64_t		entryCount;
 @property(nonatomic,copy,readonly)		NSString		*globalComment;
 
-- (void)enumerateArchiveContentsWithBlock:(BOOL (^)(OZArchiveFile *file, NSError *error));
-- (OZArchiveFile *)fileWithPath:(NSString *)pathInArchive caseSensitive:(BOOL)cs;
+- (void)enumerateArchiveContentsWithBlock:(BOOL (^)(OZArchivedFile *file, NSError *error))block;
+- (OZArchivedFile *)fileWithPath:(NSString *)pathInArchive caseSensitive:(BOOL)cs;
 
 @end
