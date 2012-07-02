@@ -107,7 +107,7 @@
 
 	NSMutableData			*data = [NSMutableData dataWithLength:self.expandedSize];
 	
-	if (unzReadCurrentFile(_unzipper, data.mutableBytes, data.length) != data.length)
+	if (unzReadCurrentFile(_unzipper, data.mutableBytes, data.length) != (int)data.length)
 		data = nil;
 	unzCloseCurrentFile(_unzipper);
 	
@@ -240,6 +240,12 @@ zlib_filefunc64_def		OZ_NSData_functions_template = {
 			return nil;
 	}
 	return self;
+}
+
+- (void)dealloc
+{
+	if (_unzipper)
+		unzClose(_unzipper);
 }
 
 - (uint64_t)entryCount
