@@ -8,6 +8,7 @@
 
 #import "OZArchiveReader.h"
 #import "unzip.h"
+#import "OZMemoryIO.h"
 
 @interface NSDateComponents (OZZipDateInitialization)
 
@@ -116,82 +117,6 @@
 
 @end
 
-ZPOS64_T	OZ_NSData_tell64(voidpf opaque, voidpf stream)
-{
-	return *((int64_t *)opaque);
-}
-
-long		OZ_NSData_seek64(voidpf opaque, voidpf stream, ZPOS64_T offset, int origin)
-{
-	NSData		*data = (__bridge NSData *)stream;
-	int64_t		*curOffset = (int64_t *)opaque, realOffset = (int64_t)offset;
-	
-	if (*curOffset < 0)
-		return 1;
-	
-	if (origin == ZLIB_FILEFUNC_SEEK_CUR)
-		realOffset += *curOffset;
-	else if (origin == ZLIB_FILEFUNC_SEEK_END)
-		realOffset += data.length;
-	else if (origin != ZLIB_FILEFUNC_SEEK_SET)
-		return 1;
-
-	if (realOffset < 0 || realOffset >= (NSInteger)data.length)
-		return 1;
-	*curOffset = offset;
-	return 0;
-}
-
-voidpf		OZ_NSData_open64(voidpf opaque, const void *filename, int mode) // opaque is the data offset, filename is the NSData* object
-{
-	if ((mode & ZLIB_FILEFUNC_MODE_READWRITEFILTER) != ZLIB_FILEFUNC_MODE_READ)
-		return NULL;
-	*((int64_t *)opaque) = 0;
-	return (void *)filename; // Yes, I really mean to cast away constness
-}
-
-uLong		OZ_NSData_read64(voidpf opaque, voidpf stream, void *buf, uLong size)
-{
-	NSData		*data = (__bridge NSData *)stream;
-	int64_t		*offset = (int64_t *)opaque;
-	
-	if (*offset < 0)
-		return 0;
-	
-	uLong		bytesToRead = MIN(size, (uint64_t)data.length - (uint64_t)*offset);
-	
-	if (bytesToRead)
-		[data getBytes:buf range:(NSRange){ *offset, bytesToRead }];
-	return bytesToRead;
-}
-
-uLong		OZ_NSData_write64(voidpf opaque, voidpf stream, const void *buf, uLong size)
-{
-	return 0;
-}
-
-int			OZ_NSData_close64(voidpf opaque, voidpf stream)
-{
-	free(opaque);
-	return 0;
-}
-
-int			OZ_NSData_testerror64(voidpf opaque, voidpf stream)
-{
-	return *((int64_t *)opaque) < 0 ? 1 : 0;
-}
-
-zlib_filefunc64_def		OZ_NSData_functions_template = {
-	.zopen64_file = OZ_NSData_open64,
-	.zread_file = OZ_NSData_read64,
-	.zwrite_file = OZ_NSData_write64,
-	.ztell64_file = OZ_NSData_tell64,
-	.zseek64_file = OZ_NSData_seek64,
-	.zclose_file = OZ_NSData_close64,
-	.zerror_file = OZ_NSData_testerror64,
-	.opaque = NULL,
-};
-
 @implementation OZArchiveReader
 {
 	unzFile		_unzipper;
@@ -232,10 +157,7 @@ zlib_filefunc64_def		OZ_NSData_functions_template = {
 {
 	if ((self = [super init]))
 	{
-		zlib_filefunc64_def		funcs = OZ_NSData_functions_template;
-		
-		funcs.opaque = calloc(1, sizeof(int64_t));
-		_unzipper = unzOpen2_64((__bridge void *)data, &funcs);
+		_unzipper = unzOpen2_64((__bridge void *)data, &OZ_NSData_rw_functions);
 		if (!_unzipper)
 			return nil;
 	}

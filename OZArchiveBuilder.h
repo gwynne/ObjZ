@@ -8,23 +8,38 @@
 
 #import <Foundation/Foundation.h>
 #import "OZArchiveReader.h"
-#import "zip.h"
 
 @interface OZArchiveBuilder : NSObject
 
-+ (OZArchiveBuilder *)archiveBuilderWithURL:(NSURL *)url;
-+ (OZArchiveBuilder *)archiveBuilderWithPath:(NSString *)path;
-+ (OZArchiveBuilder *)archiveBuilderAppendingToData:(NSMutableData *)data;
++ (OZArchiveBuilder *)archiveBuilderWithURL:(NSURL *)url overwrite:(BOOL)overwrite;
++ (OZArchiveBuilder *)archiveBuilderWithPath:(NSString *)path overwrite:(BOOL)overwrite;
++ (OZArchiveBuilder *)archiveBuilderAppendingToData:(NSMutableData *)data overwrite:(BOOL)overwrite;
 + (OZArchiveBuilder *)archiveBuilderInMemory;
 
-- (id)initWithURL:(NSURL *)url;
-- (id)initWithPath:(NSString *)path;
-- (id)initAppendingToData:(NSMutableData *)data;
+- (id)initWithURL:(NSURL *)url overwrite:(BOOL)overwrite;
+- (id)initWithPath:(NSString *)path overwrite:(BOOL)overwrite;
+- (id)initAppendingToData:(NSMutableData *)data overwrite:(BOOL)overwrite;
 - (id)init;
 
 // The base URL against which addContentsOfURL/Path determine how much of the
 //	original file path to save. If nil, only the last path component is used.
-@property(nonatomic,strong)	NSURL		*baseURL;
+//	Also forms the base URL for the top level in addContentsOfDirectory.
+@property(nonatomic,strong)				NSURL			*baseURL;
+
+// If the builder was created with -initAppendingToData, this is the same
+//	object that was passed. If the builder was created with -init, this is the
+//	actual mutable data which is being updated. In all other cases, this is nil.
+@property(nonatomic,strong,readonly)	NSMutableData	*data;
+
+// Close the archive. An archive can not be considered valid until this method
+//	is called. If NO is returned, the archive is NOT valid, any files created on
+//	disk will be removed, and the builder can not be reused. After returning
+//	from this method, regardless of success, further attempts to manipulate the
+//	archive will throw an exception.
+// NOTE: This method is called automatically when the builder is deallocated,
+//	but as -dealloc has no opportunity to return errors, it is STRONGLY
+//	recommended that clients of this API call -closeAndReturnError: explicitly.
+- (BOOL)closeAndReturnError:(NSError **)error;
 
 - (BOOL)addContentsOfDirectory:(NSURL *)directory andReturnError:(NSError **)error; // replicates directory structure as much as possible
 
@@ -46,7 +61,7 @@
 		withLevel:(int)level
 		withStrategy:(int)strategy
 		withPassword:(NSString *)password
-		withFlags:(uint16_t)flags;
+		withFlags:(uint16_t)flags
 		andReturnError:(NSError **)error;
 
 @end
